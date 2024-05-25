@@ -1,3 +1,4 @@
-# VLT-PINN
-Variable linear transformation improved physics-informed neural networks (VLT-PINNs) for thin-layer flow problems.  
-The code for the paper: [*Variable linear transformation improved physics-informed neural networks to solve thin-layer flow problems*](https://doi.org/10.1016/j.jcp.2024.112761).
+# FlamePINN-1D
+Physics-informed neural networks to solve forward and inverse problems of 1D laminar flames.
+
+Full codes of case 2 and 3 will be uuploaded once the paper is accepted.
