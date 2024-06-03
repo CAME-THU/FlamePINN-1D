@@ -1,3 +1,4 @@
+"""Case configuration: calculation domain, parameters, reference solutions, governing equations, IC/BC/OCs."""
 import numpy as np
 import torch
 import deepxde as dde

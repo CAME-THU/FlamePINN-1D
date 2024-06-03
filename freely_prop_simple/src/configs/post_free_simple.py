@@ -1,3 +1,4 @@
+"""Define the field variables to be post-processed."""
 import numpy as np
 from utils.postprocess import PostProcess1D
 

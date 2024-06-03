@@ -1,3 +1,4 @@
+"""Network architecture, input transform, and output transform."""
 # import deepxde as dde
 import torch
 # import torch.nn.functional as F

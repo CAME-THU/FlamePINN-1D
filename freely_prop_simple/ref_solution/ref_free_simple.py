@@ -1,3 +1,4 @@
+"""Reference solution of 1D freely-propagating premixed flames based on simplified physical models."""
 import os
 import time
 import numpy as np

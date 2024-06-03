@@ -1,3 +1,4 @@
+"""PINN to solve the forward problems of 1D freely-propagating premixed flames based on simplified physical models."""
 import deepxde as dde
 import numpy as np
 # import torch
