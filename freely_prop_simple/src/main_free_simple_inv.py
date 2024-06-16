@@ -107,8 +107,12 @@ def main(args):
                 model_save_path=output_dir + "models/model_last",)
 
     # ----------------------------------------------------------------------
-    # restore a new model
-    # model.restore(output_dir + "models/model_last-30000.pt")
+    # restore the best model (do not if using LBFGS)
+    model_list = os.listdir(output_dir + "models/")
+    model_list_better = [s for s in model_list if "better" in s]
+    saved_epochs = [int(s.split("-")[1][:-3]) for s in model_list_better]
+    best_epoch = max(saved_epochs)
+    model.restore(output_dir + f"models/model_better-{best_epoch}.pt")
 
     # ----------------------------------------------------------------------
     # post-process
