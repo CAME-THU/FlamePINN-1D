@@ -3,24 +3,26 @@ import deepxde as dde
 import numpy as np
 # import torch
 import os
+import time
 import argparse
 
 # # relative import is not suggested
 # # set projects_deepxde as root (by clicking), or use sys.path.insert like this (then ignore the red errors):
 # import sys
-# sys.path.insert(0, os.path.dirname("E:/.../projects_PINN/"))
-from configs.case_free_simple_inv import Case
-from configs.maps_T import Maps
+# sys.path.insert(0, os.path.dirname("E:/Research_ASUS/1 PhD project/AI_PDE/projects_PINN/"))
+from configs.case_free_simple import Case
+from configs.maps_free_simple import Maps
 from configs.post_free_simple import PostProcessFlame
 from utils.utils import efmt, cal_stat
+# from utils.dataset_modi import ScaledDataSet
+from utils.callbacks_modi import VariableSaver
 
 
 def main(args):
     case = Case(args)
-    case_name = "p{:.2f}_phi{:.4f}".format(case.p_in/101325, case.phi)
-
-    scale_T = args.scale_T
-    scale_x, shift_x = args.scale_x, args.shift_x
+    # case_name = f"case{args.case_id}"
+    # case_name = "p{:.2f}_phi{:.2f}".format(case.p_in/101325, case.phi)
+    case_name = "p{:.2f}_T{:.0f}_phi{:.2f}".format(case.p_in/101325, case.T_in, case.phi)
 
     x_l, x_r = case.x_l, case.x_r
 
@@ -54,16 +56,19 @@ def main(args):
     if args.oc_type == "soft":
         output_dir += f"_ob{case.n_ob}-N{efmt(args.noise_level)}"
 
+    scale_T = args.scales["T"]
+    scale_x, shift_x = args.scales["x"], args.shifts["x"]
     output_dir += f"_T{efmt(scale_T)}_x{efmt(scale_x)}_x{efmt(shift_x)}"
 
-    if not args.know_sL:
-        output_dir += f"_sL{efmt(args.sL_ini)}"
+    if "sL" in args.infer_paras:
+        # output_dir += f"_sL{efmt(args.scales['sL'])}"
+        output_dir += f"_sL{efmt(args.infer_paras['sL'])}"
     else:
         output_dir += f"_sL-known"
-    if not args.know_lam:
-        output_dir += f"_lam{efmt(args.lam_ini)}"
-    if not args.know_Ea:
-        output_dir += f"_Ea{efmt(args.Ea_ini)}"
+    if "lam" in args.infer_paras:
+        output_dir += f"_lam{efmt(args.infer_paras['lam'])}"
+    if "Ea" in args.infer_paras:
+        output_dir += f"_Ea{efmt(args.infer_paras['Ea'])}"
 
     i_run = args.i_run
     while True:
@@ -79,18 +84,20 @@ def main(args):
         output_dir + "models/model_better", save_better_only=True, period=100)
     callbacks = [model_saver, ]
 
-    external_trainable_variables = []
-    if not args.know_sL:
-        external_trainable_variables.append(case.var_sL_s)
-    if not args.know_lam:
-        external_trainable_variables.append(case.var_lam_s)
-    if not args.know_Ea:
-        external_trainable_variables.append(case.var_Ea_s)
-    if len(external_trainable_variables) > 0:
-        variable_saver = dde.callbacks.VariableValue(
-            external_trainable_variables, period=100, precision=4, filename=output_dir + "vars_history_scaled.txt")
-        callbacks.append(variable_saver)
-   
+    external_trainable_variables, para_dict, var_saver = [], {}, None
+    if "sL" in args.infer_paras:
+        external_trainable_variables += [case.sL_infe_s, ]
+        para_dict["sL"] = case.sL_infe_s
+    if "lam" in args.infer_paras:
+        external_trainable_variables += [case.lam_infe_s, ]
+        para_dict["lam"] = case.lam_infe_s
+    if "Ea" in args.infer_paras:
+        external_trainable_variables += [case.Ea_infe_s, ]
+        para_dict["Ea"] = case.Ea_infe_s
+    if len(para_dict) > 0:
+        var_saver = VariableSaver(para_dict, args.scales, period=100, filename=output_dir + "parameters_history.csv")
+        callbacks.append(var_saver)
+
     loss_weights = None
     model.compile(optimizer="adam",  # "sgd", "rmsprop", "adam", "adamw"
                   lr=1e-3,
@@ -99,12 +106,16 @@ def main(args):
                   loss_weights=loss_weights,
                   external_trainable_variables=external_trainable_variables,
                   )
+
+    t0 = time.perf_counter()
     model.train(iterations=args.n_iter,
                 display_every=100,
                 disregard_previous_best=False,
                 callbacks=callbacks,
                 model_restore_path=None,
                 model_save_path=output_dir + "models/model_last",)
+    t_took = time.perf_counter() - t0
+    np.savetxt(output_dir + f"training_time_is_{t_took:.2f}s.txt", np.array([t_took]), fmt="%.2f")
 
     # ----------------------------------------------------------------------
     # restore the best model (do not if using LBFGS)
@@ -120,34 +131,9 @@ def main(args):
     pp1d.save_data()
     pp1d.save_metrics()
     pp1d.plot_save_loss_history()
-    # if not args.know_sL:
-    #     pp1d.save_var_metrics((case.sL_refe, ), (case.var_sL_s / args.scale_sL, ), ("sL", ))
-    #     pp1d.plot_save_var_history((case.sL_refe, ), (args.scale_sL, ), ("$s_L$", ), ("sL", ), ("m/s", ))
-    vars_refe, vars_infe, mathnames, textnames, units, scales = [], [], [], [], [], []
-    if not args.know_sL:
-        vars_refe.append(case.sL_refe)
-        vars_infe.append(case.var_sL_s / args.scale_sL)
-        mathnames.append("$s_L$")
-        textnames.append("sL")
-        units.append("m/s")
-        scales.append(args.scale_sL)
-    if not args.know_lam:
-        vars_refe.append(case.lam)
-        vars_infe.append(case.var_lam_s / args.scale_lam)
-        mathnames.append(r"$\lambda$")
-        textnames.append("lam")
-        units.append("W/(m·K)")
-        scales.append(args.scale_lam)
-    if not args.know_Ea:
-        vars_refe.append(case.Ea)
-        vars_infe.append(case.var_Ea_s / args.scale_Ea)
-        mathnames.append("$E_a$")
-        textnames.append("Ea")
-        units.append("J/mol")
-        scales.append(args.scale_Ea)
-    if len(vars_refe) > 0:
-        pp1d.save_var_metrics(vars_refe, vars_infe, textnames)
-        pp1d.plot_save_var_history(vars_refe, scales, mathnames, textnames, units)
+    if len(args.infer_paras) > 0:
+        pp1d.save_para_metrics()
+        pp1d.plot_para_history(var_saver)
     pp1d.delete_old_models()
     # pp1d.plot_1dfields()
     pp1d.plot_1dfields_comp(lws=(2.5, 3.5))
@@ -164,68 +150,57 @@ if __name__ == "__main__":
     parser.add_argument("--oc_type", type=str, default="none", help="options: none, soft")
 
     parser.add_argument("--p_in", type=float, default=101325)
+    parser.add_argument("--T_in", type=float, default=298.0)
     parser.add_argument("--phi", type=float, default=0.46)
 
-    parser.add_argument("--scale_T", type=float, default=1.0)
+    parser.add_argument("--scales", type=dict,
+                        default={"x": 1.0, "T": 1.0, "sL": 1.0},
+                        help="(variables * scale) for NN I/O, PDE scaling, and parameter inference")
+    parser.add_argument("--shifts", type=dict, default={"x": 0.0},
+                        help="((independent variables + shift) * scale) for NN input and PDE scaling")
 
-    parser.add_argument("--scale_x", type=float, default=1.0)
-    parser.add_argument("--shift_x", type=float, default=0.0)
+    parser.add_argument("--infer_paras", type=dict, default={"sL": 0.4},
+                        help="initial values for unknown physical parameters to be inferred")
 
-    parser.add_argument("--n_ob", type=int, default=100, help="number of observation points for inverse problems")
+    parser.add_argument("--n_ob", type=int, default=10, help="number of observation points for inverse problems")
     parser.add_argument("--noise_level", type=float, default=0.00,
-                        help="noise level for observations, such as 0.02 (2%)")
+                        help="noise level of observed data for inverse problems, such as 0.02 (2%)")
+    parser.add_argument("--observe_u", type=bool, default=True)
 
-    parser.add_argument("--know_sL", type=bool, default=False)
-    parser.add_argument("--sL_ini", type=float, default=0.5)
-    parser.add_argument("--scale_sL", type=float, default=1)
-
-    parser.add_argument("--know_lam", type=bool, default=False)
-    parser.add_argument("--lam_ini", type=float, default=0.03)
-    parser.add_argument("--scale_lam", type=float, default=10)
-
-    parser.add_argument("--know_Ea", type=bool, default=False)
-    parser.add_argument("--Ea_ini", type=float, default=1.5e5)
-    parser.add_argument("--scale_Ea", type=float, default=1e-6)
-
-    parser.add_argument("--observe_u", type=bool, default=False)
-
-    parser.add_argument("--n_iter", type=int, default=20000)
-    parser.add_argument("--i_run", type=int, default=1)
+    parser.add_argument("--n_iter", type=int, default=30000, help="number of training iterations")
+    parser.add_argument("--i_run", type=int, default=1, help="index of the current run")
 
     # ----------------------------------------------------------------------
     # set arguments
     args = parser.parse_args()
 
     args.case_id = 1
-    args.p_in = 101325
+    args.p_in = 101325 * 1.0
+    args.T_in = 298.0
     args.phi = 0.46
 
-    # args.scale_T = 0.001
-    # args.scale_x, args.shift_x = 1e4, 0
-    width = 0.0015
-    args.scale_T = 1 / 298.0  # may be changed in the case file
-    args.scale_x, args.shift_x = 10 / width, 0  # scale to [0, 10]
-    # args.scale_x, args.shift_x = 20 / width, -width / 2  # scale to [-10, 10]
+    length = 0.0015
+    args.scales["T"] = 1 / args.T_in  # may be changed in the case file
+    args.scales["x"], args.shifts["x"] = 10 / length, 0  # scale to [0, 10]
+
+    # args.infer_paras = {}  # known sL
+    # args.infer_paras["sL"] = 0.1  # tends to flashback
+    args.infer_paras["sL"] = 0.4  # tends to blow out
 
     # args.problem_type, args.bc_type, args.oc_type = "forward", "soft", "none"
-    args.problem_type, args.bc_type, args.oc_type = "inverse", "none", "soft"
-    
-    args.know_sL = False
-    # args.know_sL = True
-    # args.sL_ini = 0.1  # tends to flashback
-    args.sL_ini = 0.4  # tends to blow out
 
-    args.n_ob = 5
-    args.know_lam = False
-    args.know_Ea = False
+    args.problem_type, args.bc_type, args.oc_type = "inverse", "none", "soft"
+    args.infer_paras["lam"], args.scales["lam"] = 0.03, 10  # W/(m·K)
+    args.infer_paras["Ea"], args.scales["Ea"] = 1.5e5, 1e-6  # J/mol
+
+    args.n_ob = 10
     # args.noise_level = 0.0
     args.noise_level = 0.02
 
     args.observe_u = True
 
-    args.n_iter = 1000
-    # args.n_iter = 30000
-    # args.n_iter = 80000
+    # args.n_iter = 1000
+    args.n_iter = 30000
 
     # ----------------------------------------------------------------------
     # run
@@ -233,10 +208,15 @@ if __name__ == "__main__":
     n_run = 1
     for args.i_run in range(1, 1 + n_run):
         output_dir = main(args)
-    
+
     # n_run = 1
-    # for args.p_in in (101325, 101325 * 1.2):
-    #     for args.phi in (0.40, 0.42, 0.44, 0.46, 0.48, 0.50):
+    # for args.infer_paras["sL"] in (0.4, ):
+    #     for args.i_run in range(1, 1 + n_run):
+    #         output_dir = main(args)
+
+    # n_run = 1
+    # for args.n_ob in (5, 6, 7, 8, 9, 10, 12, 15, 20, 25):
+    #     for args.noise_level in (0.00, 0.01, 0.02):
     #         for args.i_run in range(1, 1 + n_run):
     #             output_dir = main(args)
-
+    

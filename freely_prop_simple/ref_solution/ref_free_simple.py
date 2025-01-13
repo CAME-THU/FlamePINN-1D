@@ -6,11 +6,12 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")  # do not show figures
 import matplotlib.pyplot as plt
-set_fs = 24
+set_fs = 22
 set_dpi = 200
-plt.rcParams["font.sans-serif"] = "Times New Roman"  # default font
 plt.rcParams["font.size"] = set_fs  # default font size
-plt.rcParams["mathtext.fontset"] = "stix"  # default font of math text
+plt.rcParams["font.sans-serif"] = "Arial"  # default font
+# plt.rcParams["font.sans-serif"] = "Times New Roman"  # default font
+# plt.rcParams["mathtext.fontset"] = "stix"  # default font of math text
 
 
 # ----------------------------------------------------------------------
@@ -41,19 +42,20 @@ T, gradT, u, rho, p, YF, omega = np.zeros(n_grids), np.zeros(n_grids), np.zeros(
 
 # ----------------------------------------------------------------------
 # inlet boundary condition
-T[0] = 298  # K
+T[0] = 450  # K
 gradT[0] = 1e5  # K/m
-p[0] = 101325 * 1.2  # Pa
-# phi = (2 * 32 / 16) * YF[0] / (1 - YF[0])
-phi = 0.50
+p[0] = 101325 * 1.0  # Pa
+phi = 0.40
 YF[0] = phi / (phi + (2 * 32 / 16))
 rho[0] = p[0] / (Rg * T[0])  # kg/m3
 omega[0] = A * np.exp(-Ea / (R * T[0])) * (YF[0] * rho[0]) ** nu_rxn  # kg/m3-s
 
 T_max = T[0] + qF * YF[0] / cp
 
-save_dir = "./results/gradT{:.0f}_p{:.2f}_phi{:.4f}/".format(gradT[0], p[0]/101325, phi)
+# save_dir = "./results/p{:.2f}_phi{:.2f}/".format(p[0]/101325, phi)
+save_dir = "./results/p{:.2f}_T{:.0f}_phi{:.2f}/".format(p[0]/101325, T[0], phi)
 os.makedirs(save_dir + "data/", exist_ok=True)
+os.makedirs(save_dir + "pics/", exist_ok=True)
 
 # ----------------------------------------------------------------------
 # solve the problem using the bisection method
@@ -63,7 +65,6 @@ u0_r = 1.
 t0 = time.perf_counter()
 for k_u in range(n_steps):
     print("\nk_u: {:d}, u0_r-u0_l = {:.4e}".format(k_u, u0_r - u0_l))
-    # print("omega_max:", max(omega))
     u[0] = (u0_l + u0_r) / 2
     c1 = dx * rho[0] * cp / lam * u[0]
     c2 = dx * qF / lam
@@ -116,7 +117,7 @@ for i in range(len(fields)):
     plt.xlabel("$x$/mm")
     plt.ylabel(units[i])
     plt.plot(x * 1e3, fields[i], lw=3)
-    plt.savefig(save_dir + f"{i+1}_{textnames[i]}.png", bbox_inches="tight", dpi=set_dpi)  # .png  .svg
+    plt.savefig(save_dir + f"pics/{i+1}_{textnames[i]}.png", bbox_inches="tight", dpi=set_dpi)  # .png  .svg
     plt.close()
 
 # ----------------------------------------------------------------------

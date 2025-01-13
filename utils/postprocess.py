@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 
 set_fs = 22
 set_dpi = 200
-plt.rcParams["font.sans-serif"] = "Arial"  # default font
 plt.rcParams["font.size"] = set_fs  # default font size
+plt.rcParams["font.sans-serif"] = "Arial"  # default font
+# plt.rcParams["font.sans-serif"] = "Times New Roman"  # default font
 # plt.rcParams["mathtext.fontset"] = "stix"  # default font of math text
 
 
@@ -40,6 +41,13 @@ class PostProcess:
         self.mathnames = []  # the field variable names in math format, using for figure titles, for example
         self.textnames = []  # the field variable names in plain text format
         self.units = []  # the units of the field variables
+
+        # for inferred parameters
+        self.para_infes = []
+        self.para_refes = []
+        self.para_mathnames = []
+        self.para_textnames = []
+        self.para_units = []
 
     def _save_data(self, save_refe=True, suffix=""):
         """Save the predicted and reference fields."""
@@ -101,30 +109,38 @@ class PostProcess:
         print("Saving metrics...")
         self._save_metrics(self.refes, self.preds, self.output_dir)
 
-    def save_var_metrics(self, vars_refe=(0.1,), vars_infe=(dde.Variable(1.0),), vars_name=("nu",)):
-        """Save the evaluation metrics of external trainable variables."""
-        print("Saving metrics of external trainable variables...")
+    def save_para_metrics(self):
+        """Save the evaluation metrics of inferred parameters (i.e. external trainable variables)."""
+        print("Saving the metrics of inferred parameters...")
+        n_para = len(self.para_refes)
         output_dir = self.output_dir
+
+        para_infes_strs = ["{:.4e}".format(self.para_infes[i]) for i in range(n_para)]
+        para_refes_strs, errors_strs = [], []
+        for i in range(n_para):
+            if self.para_refes[i] is None:
+                para_refes_strs.append("None")
+                errors_strs.append("None")
+            else:
+                para_refes_strs.append("{:.4e}".format(self.para_refes[i]))
+                errors_strs.append("{:.4%}".format(self.para_infes[i] / self.para_refes[i] - 1))
+
         file = open(output_dir + "metrics.txt", "a")
-        # file = open(output_dir + "metrics.txt", "w")
         file.write("\n")
-        file.write("external trainable variables:   ")
-        file.write(", ".join(vars_name))
+        file.write("parameter:   ")
+        file.write(", ".join(self.para_textnames))
         file.write("\n")
 
         file.write("reference:   ")
-        for i in range(len(vars_refe)):
-            file.write("{:.4e}".format(vars_refe[i]) + ", ")
+        file.write(", ".join(para_refes_strs))
         file.write("\n")
 
         file.write("inferred:   ")
-        for i in range(len(vars_infe)):
-            file.write("{:.4e}".format(vars_infe[i]) + ", ")
+        file.write(", ".join(para_infes_strs))
         file.write("\n")
 
         file.write("relative error:   ")
-        for i in range(len(vars_infe)):
-            file.write("{:.4%}".format(vars_infe[i] / vars_refe[i] - 1) + ", ")
+        file.write(", ".join(errors_strs))
         file.write("\n")
         file.close()
 
@@ -167,38 +183,34 @@ class PostProcess:
             np.array(loss_history.steps)[:, None],
             np.array(loss_history.loss_train),
         ])
-        np.savetxt(output_dir + f"{save_name}.txt", loss_save, fmt="%.2e", delimiter="    ",
-                   header="    ".join(["step"] + loss_names))
+        np.savetxt(output_dir + f"{save_name}.csv", loss_save, fmt="%.2e", delimiter=",",
+                   header=",".join(["epoch"] + loss_names), comments="")
 
     def plot_save_loss_history(self):
-        self._plot_save_loss_history(self.model, self.case.names, self.output_dir, "losses_train")
+        self._plot_save_loss_history(self.model, self.case.names, self.output_dir, "losses_history")
 
-    def plot_save_var_history(self, vars_refe=(0.1,), scales=(1,),
-                              mathnames=(r"$\nu$",), textnames=("nu",), units=("m$^2$/s",)):
-        """Plot the history of external trainable variables and save the history data."""
-        print("Plotting and saving variable learning history...")
+    def plot_para_history(self, var_saver):
+        """Plot the learning history of inferred parameters (i.e. external trainable variables)."""
+        print("Plotting the learning history of inferred parameters...")
         output_dir = self.output_dir
         os.makedirs(output_dir + "data/", exist_ok=True)
         os.makedirs(output_dir + "pics/", exist_ok=True)
 
-        file = open(self.output_dir + "vars_history_scaled.txt", "r")
-        lines = file.readlines()
-        epochs = np.array([int(line.split(" [")[0]) for line in lines])
-        vars_history = np.array([line.split(" [")[1][:-2].split(", ") for line in lines], dtype=float)
-        vars_history = vars_history / np.array(scales)
-        file.close()
+        para_history = np.array(var_saver.value_history)
+        epochs = para_history[:, 0]
+        para_history = para_history[:, 1:]
 
-        for i in range(vars_history.shape[1]):
+        for i in range(para_history.shape[1]):
             plt.figure(figsize=(8, 6))
-            plt.title(mathnames[i], fontsize="medium")
+            plt.title(self.para_mathnames[i], fontsize="medium")
             plt.xlabel("Epoch")
-            plt.ylabel(units[i])
-            plt.plot(epochs, np.ones(len(epochs)) * vars_refe[i], c="k", ls="--", lw=3, label="Reference")
-            plt.plot(epochs, vars_history[:, i], lw=2, label="PINN")
+            plt.ylabel(self.para_units[i])
+            if self.para_refes[i] is not None:
+                plt.plot(epochs, np.ones(len(epochs)) * self.para_refes[i], c="k", ls="--", lw=3, label="Reference")
+            plt.plot(epochs, para_history[:, i], lw=2, label="Inferred")
             plt.legend(fontsize="small")
-            plt.savefig(output_dir + f"pics/variable{i + 1}_{textnames[i]}.png", bbox_inches="tight", dpi=set_dpi)
+            plt.savefig(output_dir + f"pics/parameter{i + 1}_{self.para_textnames[i]}.png", bbox_inches="tight", dpi=set_dpi)
             plt.close()
-        np.save(output_dir + "data/variables_history.npy", vars_history)
 
     def delete_old_models(self):
         """Delete the old models produced during training"""

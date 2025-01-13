@@ -18,12 +18,9 @@ class PostProcessFlame(PostProcess1D):
         R, A, nu_rxn = case.R, case.A, case.nu_rxn
         T_in, YF_in, rho_in = case.T_in, case.YF_in, case.rho_in
         Rg = R / W
-        
-        sL = case.sL_refe if args.know_sL else case.var_sL_s.cpu().detach().numpy() / args.scale_sL
-        if "know_Ea" in args:
-            Ea = case.Ea if args.know_Ea else case.var_Ea_s.cpu().detach().numpy() / args.scale_Ea
-        else:
-            Ea = case.Ea
+
+        sL = case.sL_infe_s.cpu().detach().numpy() / args.scales["sL"] if "sL" in args.infer_paras else case.sL_refe
+        Ea = case.Ea_infe_s.cpu().detach().numpy() / args.scales["Ea"] if "Ea" in args.infer_paras else case.Ea
 
         self.YF_pred = YF_in + cp * (T_in - self.T_pred) / qF
         coef = sL + Rg * T_in / sL
@@ -39,9 +36,29 @@ class PostProcessFlame(PostProcess1D):
         self.omega_refe = case.func_omega(self.x[:, None]).ravel()
         self.p_refe = case.func_p(self.x[:, None]).ravel()
         
-        self.preds = [self.T_pred, self.YF_pred, self.u_pred, self.rho_pred, self.omega_pred, self.p_pred - self.p_pred[0]]
-        self.refes = [self.T_refe, self.YF_refe, self.u_refe, self.rho_refe, self.omega_refe, self.p_refe - self.p_refe[0]]
-        self.mathnames = ["$T$", "$Y_F$", "$u$", r"$\rho$", r"$\omega$", "$p_{rel}$"]
-        self.textnames = ["T", "YF", "u", "rho", "omega", "p"]
-        self.units = ["K", " ", "m/s", "kg/m$^3$", "kg/(m$^3$·s)", "Pa"]
+        self.preds += [self.T_pred, self.YF_pred, self.u_pred, self.rho_pred, self.omega_pred, self.p_pred - self.p_pred[0]]
+        self.refes += [self.T_refe, self.YF_refe, self.u_refe, self.rho_refe, self.omega_refe, self.p_refe - self.p_refe[0]]
+        self.mathnames += ["$T$", "$Y_F$", "$u$", r"$\rho$", r"$\omega$", "$p_{rel}$"]
+        self.textnames += ["T", "YF", "u", "rho", "omega", "p"]
+        self.units += ["K", " ", "m/s", "kg/m$^3$", "kg/(m$^3$·s)", "Pa"]
 
+        if "sL" in args.infer_paras:
+            self.para_infes += [case.sL_infe_s / args.scales["sL"], ]
+            self.para_refes += [case.sL_refe, ]
+            self.para_mathnames += ["$s_L$", ]
+            self.para_textnames += ["sL", ]
+            self.para_units += ["m/s", ]
+
+        if "lam" in args.infer_paras:
+            self.para_infes += [case.lam_infe_s / args.scales["lam"], ]
+            self.para_refes += [case.lam, ]
+            self.para_mathnames += [r"$\lambda$", ]
+            self.para_textnames += ["lambda", ]
+            self.para_units += ["W/(m·K)", ]
+
+        if "Ea" in args.infer_paras:
+            self.para_infes += [case.Ea_infe_s / args.scales["Ea"], ]
+            self.para_refes += [case.Ea, ]
+            self.para_mathnames += ["$E_a$", ]
+            self.para_textnames += ["Ea", ]
+            self.para_units += ["J/mol", ]
