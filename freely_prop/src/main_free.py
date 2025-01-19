@@ -270,9 +270,9 @@ if __name__ == "__main__":
     if args.case_id == 1:
         args.gas = ct.Solution("1S_CH4_MP1.yaml")
         args.gas.transport_model = "Mix"
-        args.gas1d = Gas1D_1stepIr(args.gas)
+        args.gas1d = Gas1D_1stepIr(args.gas, args)
         args.fuel, args.oxidizer = "CH4:1.0", "O2:1.0, N2:3.76"
-        args.scales["Ys"] = [10, 10, 50, 10, 5]  # O2, H2O, CH4, CO2, N2 --may be changed in case file.
+        args.scales["Ys"] = [1, 1, 1, 1, 1]  # O2, H2O, CH4, CO2, N2 --may be changed in case file.
     else:
         pass
         # TODO: more cases.
@@ -298,6 +298,7 @@ if __name__ == "__main__":
 
     n_run = 1
     for args.i_run in range(1, 1 + n_run):
+        print(args)
         output_dir = main(args)
 
     # n_run = 1

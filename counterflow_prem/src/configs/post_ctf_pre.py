@@ -8,8 +8,10 @@ matplotlib.use("Agg")  # do not show figures
 import matplotlib.pyplot as plt
 set_fs = 22
 set_dpi = 200
-plt.rcParams["font.sans-serif"] = "Arial"  # default font
 plt.rcParams["font.size"] = set_fs  # default font size
+plt.rcParams["font.sans-serif"] = "Arial"  # default font (for Windows)
+# plt.rcParams["font.sans-serif"] = "Nimbus Sans"  # default font (for Linux)
+# plt.rcParams["font.sans-serif"] = "Times New Roman"  # default font
 # plt.rcParams["mathtext.fontset"] = "stix"  # default font of math text
 
 
@@ -48,13 +50,14 @@ class PostProcessFlame(PostProcess1D):
             self.para_mathnames += [r"$\Lambda$", ]
             self.para_textnames += ["Lambda", ]
             self.para_units += ["Pa/m$^2$", ]
-            
-        if "Ea" in args.infer_paras:
-            self.para_infes += [case.Ea_infe_s / args.scales["Ea"], ]
-            self.para_refes += [case.Ea, ]
-            self.para_mathnames += ["$E_a$", ]
-            self.para_textnames += ["Ea", ]
-            self.para_units += ["J/kmol", ]
+
+        if "Eas" in args.infer_paras:
+            n_rxn = args.gas.n_reactions
+            self.para_infes += [case.Eas_infe_s[k] / args.scales["Eas"][k] for k in range(n_rxn)]
+            self.para_refes += [args.gas1d.AbEs[k, 2].cpu().numpy().item() for k in range(n_rxn)]
+            self.para_mathnames += [fr"$E_{{a, {k + 1}}}$" for k in range(n_rxn)]
+            self.para_textnames += [f"Ea_{k + 1}" for k in range(n_rxn)]
+            self.para_units += ["J/kmol", ] * n_rxn
 
     def plot_species(self):
         """Plot the predicted species in one figure."""

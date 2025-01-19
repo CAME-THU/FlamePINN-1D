@@ -207,6 +207,7 @@ if __name__ == "__main__":
     
     n_run = 1
     for args.i_run in range(1, 1 + n_run):
+        print(args)
         output_dir = main(args)
 
     # n_run = 1

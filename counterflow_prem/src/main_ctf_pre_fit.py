@@ -184,7 +184,7 @@ if __name__ == "__main__":
     if args.case_id == 1:
         args.gas = ct.Solution("1S_CH4_MP1.yaml")
         args.gas.transport_model = "Mix"
-        args.gas1d = Gas1D_1stepIr(args.gas)
+        args.gas1d = Gas1D_1stepIr(args.gas, args)
         args.mdot_u = 1.0  # kg/m^2/s
         args.mdot_b = 1.0  # kg/m^2/s
         args.fuel, args.oxidizer = "CH4:1.0", "O2:1.0, N2:3.76"
@@ -213,4 +213,5 @@ if __name__ == "__main__":
     # run
     n_run = 1
     for args.i_run in range(1, 1 + n_run):
+        print(args)
         output_dir = main(args)

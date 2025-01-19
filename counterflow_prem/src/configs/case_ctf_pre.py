@@ -6,7 +6,6 @@ import torch
 import deepxde as dde
 from scipy.interpolate import interp1d
 from utils.icbcs import ScaledDirichletBC, ScaledPointSetBC
-from utils.gas1d import Gas1D_1stepIr_Ea
 
 # dtype = dde.config.real(torch)
 dtype = torch.float64
@@ -36,18 +35,11 @@ class Case:
 
         self.icbcocs = []  # initial, boundary, observation conditions
 
-        self.pCurv_infe_s, self.A_infe_s, self.Ea_infe_s = None, None, None
+        self.pCurv_infe_s = None
         if "pCurv" in args.infer_paras:
             self.pCurv_infe_s = dde.Variable(args.infer_paras["pCurv"] * args.scales["pCurv"], dtype=dtype)
-        if "Ea" in args.infer_paras:
-            self.Ea_infe_s = dde.Variable(args.infer_paras["Ea"] * args.scales["Ea"], dtype=dtype)
 
-        if "Ea" in args.infer_paras:
-            self.gas1d = Gas1D_1stepIr_Ea(args.gas, (self.Ea_infe_s, args.scales["Ea"]))
-        else:
-            self.gas1d = args.gas1d
-
-        self.Ea = self.gas1d.AbEs[:, 2].cpu().numpy().item()
+        self.Eas_infe_s = args.gas1d.Eas_infe_s  # list
 
         # ----------------------------------------------------------------------
         # define parameters
@@ -103,6 +95,7 @@ class Case:
         # ----------------------------------------------------------------------
         # define ICs, BCs, OCs
         self.define_icbcocs()
+        print(args)
 
     # ----------------------------------------------------------------------
     # reference solution with individual inputs
@@ -129,8 +122,7 @@ class Case:
         scale_Ys = torch.tensor(args.scales["Ys"], dtype=dtype)  # (n_spe, )
         scale_x = args.scales["x"]
         # shift_x = args.shifts["x"]
-        # gas1d = args.gas1d
-        gas1d = self.gas1d
+        gas1d = args.gas1d
 
         u, V, T, Ys = uVTYs[:, 0:1], uVTYs[:, 1:2], uVTYs[:, 2:3], uVTYs[:, 3:]
 

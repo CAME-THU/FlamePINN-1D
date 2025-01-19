@@ -85,6 +85,7 @@ class Case:
         # ----------------------------------------------------------------------
         # define ICs, BCs, OCs
         self.define_icbcocs()
+        print(args)
 
     # ----------------------------------------------------------------------
     # reference solution with individual inputs

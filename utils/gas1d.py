@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import deepxde as dde
 
 dtype = torch.float64
 R = 8314.46261815324  # J/kmol/K
@@ -321,9 +322,14 @@ class Gas1D:
 
 
 class Gas1D_1stepIr(Gas1D):
-    def __init__(self, gas):
+    def __init__(self, gas, args):
         super().__init__(gas)
         assert self.n_rxn == 1
+        self.args = args
+        self.Eas_infe_s = []
+        if "Eas" in args.infer_paras:
+            for k in range(self.n_rxn):
+                self.Eas_infe_s.append(dde.Variable(args.infer_paras["Eas"][k] * args.scales["Eas"][k], dtype=dtype))
 
     def cal_c_M(self, T, Ys):
         """Calculate reactions [M]. Unit: kmol/m3. Shape: (n_pnt, n_rxn). T: (n_pnt, 1). Ys: (n_pnt, n_spe)."""
@@ -338,7 +344,13 @@ class Gas1D_1stepIr(Gas1D):
 
     def cal_k_f(self, T, Ys):
         """Calculate reactions forward rate constants. Shape: (n_pnt, n_rxn). T: (n_pnt, 1). Ys: (n_pnt, n_spe)."""
-        k_h_cal = self.AbEs[:, 0] * T ** self.AbEs[:, 1] * torch.exp(- self.AbEs[:, 2] / R / T)  # (n_pnt, n_rxn = 1)
+        Eas = self.AbEs[:, 2]
+        Eas_infe = []
+        if "Eas" in self.args.infer_paras:
+            for k in range(self.n_rxn):
+                Eas_infe.append(self.Eas_infe_s[k][None] / self.args.scales["Eas"][k])
+            Eas = torch.cat(Eas_infe)
+        k_h_cal = self.AbEs[:, 0] * T ** self.AbEs[:, 1] * torch.exp(- Eas / R / T)  # (n_pnt, n_rxn = 1)
         return k_h_cal
 
     def cal_k_r(self, T, Ys):
@@ -361,15 +373,3 @@ class Gas1D_1stepIr(Gas1D):
         rop_r = torch.zeros([T.shape[0], self.n_rxn], dtype=dtype)
         return rop_r
 
-
-class Gas1D_1stepIr_Ea(Gas1D_1stepIr):
-    def __init__(self, gas, arg_Ea):
-        super().__init__(gas)
-        self.Eas = arg_Ea[0]
-        self.scale_Ea = arg_Ea[1]
-
-    def cal_k_f(self, T, Ys):
-        """Calculate reactions forward rate constants. Shape: (n_pnt, n_rxn). T: (n_pnt, 1). Ys: (n_pnt, n_spe)."""
-        Ea = self.Eas / self.scale_Ea
-        k_h_cal = self.AbEs[:, 0] * T ** self.AbEs[:, 1] * torch.exp(- Ea / R / T)  # (n_pnt, n_rxn = 1)
-        return k_h_cal

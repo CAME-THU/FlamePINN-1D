@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 set_fs = 22
 set_dpi = 200
 plt.rcParams["font.size"] = set_fs  # default font size
-plt.rcParams["font.sans-serif"] = "Arial"  # default font
+plt.rcParams["font.sans-serif"] = "Arial"  # default font (for Windows)
+# plt.rcParams["font.sans-serif"] = "Nimbus Sans"  # default font (for Linux)
 # plt.rcParams["font.sans-serif"] = "Times New Roman"  # default font
 # plt.rcParams["mathtext.fontset"] = "stix"  # default font of math text
 

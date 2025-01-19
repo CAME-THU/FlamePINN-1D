@@ -93,10 +93,6 @@ def main(args):
         output_dir += f"_pCurv{efmt(args.infer_paras['pCurv'])}"
     else:
         output_dir += f"_pCurv-known"
-    if "A" in args.infer_paras:
-        output_dir += f"_A{efmt(args.infer_paras['A'])}"
-    if "Ea" in args.infer_paras:
-        output_dir += f"_Ea{efmt(args.infer_paras['Ea'])}"
 
     i_run = args.i_run
     while True:
@@ -118,12 +114,10 @@ def main(args):
     if "pCurv" in args.infer_paras:
         external_trainable_variables += [case.pCurv_infe_s, ]
         para_dict["pCurv"] = case.pCurv_infe_s
-    if "A" in args.infer_paras:
-        external_trainable_variables += [case.A_infe_s, ]
-        para_dict["A"] = case.A_infe_s
-    if "Ea" in args.infer_paras:
-        external_trainable_variables += [case.Ea_infe_s, ]
-        para_dict["Ea"] = case.Ea_infe_s
+    if "Eas" in args.infer_paras:
+        for k in range(args.gas.n_reactions):
+            external_trainable_variables += [case.Eas_infe_s[k], ]
+            para_dict[f"Ea{k + 1}"] = case.Eas_infe_s[k]
     if len(para_dict) > 0:
         var_saver = VariableSaver(para_dict, args.scales, period=100, filename=output_dir + "parameters_history.csv")
         callbacks.append(var_saver)
@@ -238,15 +232,24 @@ if __name__ == "__main__":
     # set arguments
     args = parser.parse_args()
 
+    # args.problem_type, args.bc_type, args.oc_type = "forward", "soft", "none"
+    args.problem_type, args.bc_type, args.oc_type = "inverse", "none", "soft"
+
     args.case_id = 1
     if args.case_id == 1:
         args.gas = ct.Solution("1S_CH4_MP1.yaml")
         args.gas.transport_model = "Mix"
-        args.gas1d = Gas1D_1stepIr(args.gas)
+
+        args.infer_paras["Eas"], args.scales["Eas"] = [10e7, ], [1e-8, ]  # J/kmol
+        for k in range(len(args.infer_paras["Eas"])):
+            args.scales[f"Ea{k + 1}"] = args.scales["Eas"][k]
+
+        args.gas1d = Gas1D_1stepIr(args.gas, args)
         args.mdot_u = 1.0  # kg/m^2/s
         args.mdot_b = 1.0  # kg/m^2/s
         args.fuel, args.oxidizer = "CH4:1.0", "O2:1.0, N2:3.76"
-        args.scales["Ys"] = [10, 10, 50, 10, 1.]  # O2, H2O, CH4, CO2, N2 --may be changed in case file.
+        args.scales["Ys"] = [1, 1, 1, 1, 1.]  # O2, H2O, CH4, CO2, N2 --may be changed in case file.
+
     else:
         pass
         # TODO: more cases.
@@ -262,11 +265,6 @@ if __name__ == "__main__":
 
     # args.infer_paras = {}  # known pCurv
     args.infer_paras["pCurv"], args.scales["pCurv"] = -10000, 1e-5  # Pa/m2
-    
-    # args.problem_type, args.bc_type, args.oc_type = "forward", "soft", "none"
-    
-    args.problem_type, args.bc_type, args.oc_type = "inverse", "none", "soft"
-    args.infer_paras["Ea"], args.scales["Ea"] = 10e7, 1e-8  # J/kmol
 
     args.n_ob = 16
     args.noise_level = 0.00
@@ -278,6 +276,7 @@ if __name__ == "__main__":
     # run
     n_run = 1
     for args.i_run in range(1, 1 + n_run):
+        print(args)
         output_dir = main(args)
 
     # n_run = 1
