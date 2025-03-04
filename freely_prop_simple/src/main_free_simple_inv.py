@@ -12,7 +12,7 @@ import argparse
 # sys.path.insert(0, os.path.dirname("E:/Research_ASUS/1 PhD project/AI_PDE/projects_PINN/"))
 from configs.case_free_simple import Case
 from configs.maps_free_simple import Maps
-from configs.post_free_simple import PostProcessFlame
+from configs.post_free_simple import Postprocess
 from utils.utils import efmt, cal_stat
 # from utils.dataset_modi import ScaledDataSet
 from utils.callbacks_modi import VariableSaver
@@ -127,7 +127,7 @@ def main(args):
 
     # ----------------------------------------------------------------------
     # post-process
-    pp1d = PostProcessFlame(args=args, case=case, model=model, output_dir=output_dir)
+    pp1d = Postprocess(args=args, case=case, model=model, output_dir=output_dir)
     pp1d.save_data()
     pp1d.save_metrics()
     pp1d.plot_save_loss_history()

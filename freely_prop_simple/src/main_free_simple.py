@@ -12,7 +12,7 @@ import argparse
 # sys.path.insert(0, os.path.dirname("E:/Research_ASUS/1 PhD project/AI_PDE/projects_PINN/"))
 from configs.case_free_simple import Case
 from configs.maps_free_simple import Maps
-from configs.post_free_simple import PostProcessFlame
+from configs.post_free_simple import Postprocess
 from utils.utils import efmt, cal_stat
 from utils.dataset_modi import ScaledDataSet
 from utils.callbacks_modi import VariableSaver
@@ -128,7 +128,7 @@ def main(args):
     np.savetxt(output_dir + f"training_time_of_stage1_is_{t_took:.2f}s.txt", np.array([t_took]), fmt="%.2f")
 
     os.makedirs(output_dir + "stage1/", exist_ok=True)
-    pp1d_s1 = PostProcessFlame(args=args, case=case, model=model_warm, output_dir=output_dir + "stage1/")
+    pp1d_s1 = Postprocess(args=args, case=case, model=model_warm, output_dir=output_dir + "stage1/")
     # pp1d_s1.save_data()
     pp1d_s1.plot_save_loss_history()  # Note: the legend may be wrong
     pp1d_s1.plot_1dfields_comp(lws=(2.5, 3.5))
@@ -162,7 +162,7 @@ def main(args):
 
     # ----------------------------------------------------------------------
     # post-process
-    pp1d = PostProcessFlame(args=args, case=case, model=model, output_dir=output_dir)
+    pp1d = Postprocess(args=args, case=case, model=model, output_dir=output_dir)
     pp1d.save_data()
     pp1d.save_metrics()
     pp1d.plot_save_loss_history()

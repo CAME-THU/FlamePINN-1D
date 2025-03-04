@@ -3,7 +3,7 @@ import numpy as np
 from utils.postprocess import PostProcess1D
 
 
-class PostProcessFlame(PostProcess1D):
+class Postprocess(PostProcess1D):
     def __init__(self, args, case, model, output_dir):
         super().__init__(args, case, model, output_dir)
 

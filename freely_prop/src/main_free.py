@@ -13,7 +13,7 @@ import argparse
 # sys.path.insert(0, os.path.dirname("E:/Research_ASUS/1 PhD project/AI_PDE/projects_PINN/"))
 from configs.case_free import Case
 from configs.maps_free import Maps
-from configs.post_free import PostProcessFlame
+from configs.post_free import Postprocess
 from utils.utils import efmt, cal_stat
 from utils.gas1d import Gas1D, Gas1D_1stepIr
 from utils.dataset_modi import ScaledDataSet
@@ -151,7 +151,7 @@ def main(args):
     np.savetxt(output_dir + f"training_time_of_stage1_is_{t_took:.2f}s.txt", np.array([t_took]), fmt="%.2f")
 
     os.makedirs(output_dir + "stage1/", exist_ok=True)
-    pp1d_s1 = PostProcessFlame(args=args, case=case, model=model_warm, output_dir=output_dir + "stage1/")
+    pp1d_s1 = Postprocess(args=args, case=case, model=model_warm, output_dir=output_dir + "stage1/")
     # pp1d_s1.save_data()
     pp1d_s1.plot_save_loss_history()  # Note: the legend may be wrong
     # pp1d_s1.plot_1dfields()
@@ -178,7 +178,7 @@ def main(args):
     np.savetxt(output_dir + f"training_time_of_stage2_is_{t_took:.2f}s.txt", np.array([t_took]), fmt="%.2f")
 
     os.makedirs(output_dir + "stage2/", exist_ok=True)
-    pp1d_s2 = PostProcessFlame(args=args, case=case, model=model_warm2, output_dir=output_dir + "stage2/")
+    pp1d_s2 = Postprocess(args=args, case=case, model=model_warm2, output_dir=output_dir + "stage2/")
     pp1d_s2.plot_save_loss_history()  # Note: the legend may be wrong
     # pp1d_s2.plot_1dfields()
     pp1d_s2.plot_1dfields_comp(lws=(2.5, 3.5), label_refe="Cantera")
@@ -214,7 +214,7 @@ def main(args):
 
     # ----------------------------------------------------------------------
     # post-process
-    pp1d = PostProcessFlame(args=args, case=case, model=model, output_dir=output_dir)
+    pp1d = Postprocess(args=args, case=case, model=model, output_dir=output_dir)
     pp1d.save_data()
     pp1d.save_metrics()
     pp1d.plot_save_loss_history()

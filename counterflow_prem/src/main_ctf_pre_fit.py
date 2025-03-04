@@ -13,7 +13,7 @@ import argparse
 # sys.path.insert(0, os.path.dirname("E:/Research_ASUS/1 PhD project/AI_PDE/projects_PINN/"))
 from configs.case_ctf_pre import Case
 from configs.maps_ctf_pre import Maps
-from configs.post_ctf_pre import PostProcessFlame
+from configs.post_ctf_pre import Postprocess
 from utils.utils import efmt, cal_stat
 from utils.gas1d import Gas1D, Gas1D_1stepIr
 from utils.dataset_modi import ScaledDataSet
@@ -121,7 +121,7 @@ def main(args):
 
     # ----------------------------------------------------------------------
     # post-process
-    pp1d = PostProcessFlame(args=args, case=case, model=model, output_dir=output_dir)
+    pp1d = Postprocess(args=args, case=case, model=model, output_dir=output_dir)
     pp1d.save_data()
     pp1d.save_metrics()
     pp1d.plot_save_loss_history()  # Note: the legend may be wrong
